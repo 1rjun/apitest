@@ -1,6 +1,6 @@
 venv/
 .idea/
 .DS_Store
-venevir/
 *.pyc
 .vscode/
+venenvir/
