@@ -1,53 +1,97 @@
-from flask import Flask,render_template,request
+from flask import Flask, request
+from flask_restful import Api, Resource
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 
-#initialize the application
+# initialize the application
 app = Flask(__name__)
 
-#connect the engine with the database
+# connect the engine with the database
 engine = create_engine("postgresql://arjunsingh:arjunsingh@localhost/mydb")
 
 db = scoped_session(sessionmaker(bind=engine))
 
-@app.route('/')
-def home():
-    """
-    This will be the homepage of our webapplication
-    """
-    return render_template('homepage.html')
+api = Api(app)
+
+data = {}
+
+# lets retrieve the data first
+
+dataInGeoData = db.execute("SELECT * FROM geo_data").fetchall()
+
+for values in dataInGeoData:
+    id = values.id
+    place_name = values.place_name
+    admin_name = values.admin_name
+    latitude = values.latitude
+    longitude = values.longitude
+    data[id] = {
+        "place_name":place_name,
+        "admin_name":admin_name,
+        "latitude":latitude,
+        "longitude":longitude
+    }
 
 
-#this will be the post method 
-@app.route('/post_location',methods=["POST"])
-def post_location():
-    if request.method == "POST":
-        """
-        post lat and long of the location,
-        and check if pincode exists or not
-        """
-        #retreive the value from form after submission
-        zipcode = request.form["zipcode"]
-        zipcode = "IN/" + zipcode
-        print(zipcode)
-        #Now its time to run sql query to retrieve the zipcode from table
-        #here geo_data is my table name
-        check_Zip = db.execute("SELECT * FROM geo_data WHERE id=:zipcode",
-        {'zipcode':zipcode}).rowcount
+class Data(Resource):
 
-        print(check_Zip)
-        if check_Zip>0:
-            #now check about the lat and long of the existing zipcode 
-            check_lat = db.execute("SELECT * FROM geo_data WHERE id=:zipcode",
-            {"zipcode":zipcode}
-            ).fetchall()
+    @staticmethod
+    def get():
+        return {
+            "data": data
+        }
 
-            for items in check_lat:
-                #now we have the latitude and longitude
-                latitude = items.latitude
-                longitude = items.longitude
-                if latitude == '' or longitude == '':
-                    return "sorry latitude and longitude values are not here "
-                    
-                    #here problem exist we have the ids but they dont have the latitude and longitude
+
+class GetData(Resource):
+
+    @staticmethod
+    def get(id):
+        return {
+            data[id]
+        }
+
+
+class PostLocation(Resource):
+
+
+    def post(self,message):
+
+        pincodeid1 = request.form["pincode"]
+        pincodeid = 'IN/' + pincodeid1
+        city = request.form["city"]
+        address = request.form["address"]
+        try:
+            if len(data[pincodeid])>0:
+
+                # the address exists in the api ,so we are not returning anything and pass the function
+                pass
+        
+        except:
+            """Here is the key error means the  pincode not exists,we need to put the data inside the api """
+
+
+
+
+
+class GetUsingPostgres(Resource):
+
+    def get(self,location):
+        try:
+            location = "IN/" + location
+            return{
+                "result":data[location]
+            }
+        except:
+            pass
+
+
+class Getlocation
+
+api.add_resource(Data,'/')
+api.add_resource(GetData,'/id/<int:id>')
+api.add_resource(PostLocation,'/post_location/<string:message>')
+api.add_resource(GetUsingPostgres,'/getusing_postgres/<string:location>')
+
+if __name__ == '__main__':
+    app.run(debug=True)
